@@ -1,4 +1,4 @@
-﻿namespace PrintPreviewGui
+﻿namespace Sherman.WpfReporting.Lib
 {
     public static class Constants
     {

@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using Autofac;
 using Caliburn.Micro;
-using PrintPreviewGui.ViewModels;
+using Sherman.WpfReporting.Gui.ViewModels;
 
-namespace PrintPreviewGui
+namespace Sherman.WpfReporting.Gui
 {
     public class Bootstrapper : BootstrapperBase
     {

@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace PrintPreviewGui.Reports
+namespace Sherman.WpfReporting.Gui.Reports
 {
     public partial class TestReport2
     {

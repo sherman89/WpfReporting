@@ -1,10 +1,10 @@
 ﻿using System.Printing;
 
-namespace PrintPreviewGui.ViewModels
+namespace Sherman.WpfReporting.Lib
 {
-    public class PageSizeViewModel
+    public class PageSizeModel
     {
-        public PageSizeViewModel(PageMediaSize pageMediaSizeName)
+        public PageSizeModel(PageMediaSize pageMediaSizeName)
         {
             PageMediaSize = pageMediaSizeName;
         }

@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Printing;
 
-namespace PrintPreviewGui.ViewModels
+namespace Sherman.WpfReporting.Lib
 {
-    public class PrinterViewModel
+    public class PrinterModel
     {
-        public PrinterViewModel(string fullName, PrinterType printerType, IReadOnlyCollection<PageMediaSize> pageSizeCapabilities)
+        public PrinterModel(string fullName, PrinterType printerType, IReadOnlyCollection<PageMediaSize> pageSizeCapabilities)
         {
             FullName = fullName;
             PrinterType = printerType;

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Printing;
 using System.Threading;
@@ -8,22 +7,23 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Documents;
 using Caliburn.Micro;
-using PrintPreviewGui.Reports;
+using Sherman.WpfReporting.Gui.Reports;
+using Sherman.WpfReporting.Lib;
 
-namespace PrintPreviewGui.ViewModels
+namespace Sherman.WpfReporting.Gui.ViewModels
 {
     public class ShellViewModel : Screen
     {
-        private readonly ReportGenerator reportGenerator;
+        private readonly Paginator paginator;
         private readonly Printing printing;
 
         public ShellViewModel()
         {
-            reportGenerator = new ReportGenerator();
+            paginator = new Paginator();
             printing = new Printing();
 
-            SupportedPrinters = new ObservableCollection<PrinterViewModel>();
-            SupportedPageSizes = new ObservableCollection<PageSizeViewModel>();
+            SupportedPrinters = new ObservableCollection<PrinterModel>();
+            SupportedPageSizes = new ObservableCollection<PageSizeModel>();
         }
 
         protected override Task OnActivateAsync(CancellationToken cancellationToken)
@@ -34,10 +34,10 @@ namespace PrintPreviewGui.ViewModels
             return base.OnActivateAsync(cancellationToken);
         }
 
-        public ObservableCollection<PrinterViewModel> SupportedPrinters { get; set; }
+        public ObservableCollection<PrinterModel> SupportedPrinters { get; set; }
 
-        private PrinterViewModel selectedPrinter;
-        public PrinterViewModel SelectedPrinter
+        private PrinterModel selectedPrinter;
+        public PrinterModel SelectedPrinter
         {
             get => selectedPrinter;
             set
@@ -47,10 +47,10 @@ namespace PrintPreviewGui.ViewModels
             }
         }
 
-        public ObservableCollection<PageSizeViewModel> SupportedPageSizes { get; set; }
+        public ObservableCollection<PageSizeModel> SupportedPageSizes { get; set; }
 
-        private PageSizeViewModel selectedPageSize;
-        public PageSizeViewModel SelectedPageSize
+        private PageSizeModel selectedPageSize;
+        public PageSizeModel SelectedPageSize
         {
             get => selectedPageSize;
             set
@@ -63,7 +63,7 @@ namespace PrintPreviewGui.ViewModels
         private void InitializePrinters()
         {
             var printers = printing.GetPrinters();
-            SupportedPrinters = new ObservableCollection<PrinterViewModel>(printers);
+            SupportedPrinters = new ObservableCollection<PrinterModel>(printers);
             selectedPrinter = SupportedPrinters.FirstOrDefault();
         }
 
@@ -72,7 +72,7 @@ namespace PrintPreviewGui.ViewModels
             SupportedPageSizes.Clear();
             foreach (var pageMediaSize in SelectedPrinter.PageSizeCapabilities)
             {
-                SupportedPageSizes.Add(new PageSizeViewModel(pageMediaSize));
+                SupportedPageSizes.Add(new PageSizeModel(pageMediaSize));
             }
 
             var a4 = SupportedPageSizes.SingleOrDefault(ps => ps.PageMediaSize.PageMediaSizeName == PageMediaSizeName.ISOA4);
@@ -103,7 +103,7 @@ namespace PrintPreviewGui.ViewModels
         {
             selectedReport = reportNumber;
 
-            Func<FrameworkElement> reportFactory;
+            Func<UIElement> reportFactory;
             switch (reportNumber)
             {
                 case 1:
@@ -127,11 +127,11 @@ namespace PrintPreviewGui.ViewModels
                 var pageSize = new Size(pc.OrientedPageMediaWidth.Value, pc.OrientedPageMediaHeight.Value);
                 
                 var desiredMargin = new Thickness(15);
-                var printerMinMargins = reportGenerator.GetMinimumPageMargins(pc);
+                var printerMinMargins = printing.GetMinimumPageMargins(pc);
                 AdjustMargins(ref desiredMargin, printerMinMargins);
 
-                var pages = await reportGenerator.GenerateReport(reportFactory, pageSize, desiredMargin);
-                GeneratedDocument = reportGenerator.GetFixedDocumentFromProcessedPages(pages, pageSize);
+                var pages = await paginator.Paginate(reportFactory, pageSize, desiredMargin, CancellationToken.None);
+                GeneratedDocument = paginator.GetFixedDocumentFromPages(pages, pageSize);
             }
         }
 

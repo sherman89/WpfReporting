@@ -1,4 +1,4 @@
-﻿namespace PrintPreviewGui.Reports
+﻿namespace Sherman.WpfReporting.Gui.Reports
 {
     public partial class TestReport1
     {

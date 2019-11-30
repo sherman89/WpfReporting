@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Printing;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,64 +10,37 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace PrintPreviewGui
+namespace Sherman.WpfReporting.Lib
 {
-    public class ReportGenerator
+    public class Paginator
     {
         /// <summary>
-        /// 
+        /// Take a factory that produces an instance of a UIElement derived class (i.e. <see cref="UserControl"/> with a header and list) which is used to create pages until all items in the list fit into the document.
+        /// Returns a list of paginated elements that are wrapped in a <see cref="ContentControl"/>. In order for this method to work, the given type in the factory must contain elements with
+        /// attached properties from <see cref="Document"/> set, for instance the <see cref="Document.PaginateProperty"/> must be set for lists to be paginated.
         /// </summary>
-        /// <param name="printerCapabilities"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="printerCapabilities" /> is <see langword="null" />.</exception>
-        public Thickness GetMinimumPageMargins(PrintCapabilities printerCapabilities)
-        {
-            if (printerCapabilities is null)
-            {
-                throw new ArgumentNullException(nameof(PrintCapabilities), $"{nameof(PrintCapabilities)} cannot be null.");
-            }
-
-            if (!printerCapabilities.OrientedPageMediaWidth.HasValue)
-            {
-                throw new ArgumentNullException(nameof(printerCapabilities.OrientedPageMediaWidth), $"{nameof(printerCapabilities.OrientedPageMediaWidth)} cannot be null.");
-            }
-
-            if (!printerCapabilities.OrientedPageMediaHeight.HasValue)
-            {
-                throw new ArgumentNullException(nameof(printerCapabilities.OrientedPageMediaHeight), $"{nameof(printerCapabilities.OrientedPageMediaHeight)} cannot be null.");
-            }
-
-            if (printerCapabilities.PageImageableArea == null)
-            {
-                throw new ArgumentNullException(nameof(printerCapabilities.PageImageableArea), $"{nameof(printerCapabilities.PageImageableArea)} cannot be null.");
-            }
-
-            var minLeftMargin = printerCapabilities.PageImageableArea.OriginWidth;
-            var minTopMargin = printerCapabilities.PageImageableArea.OriginHeight;
-            var minRightMargin = printerCapabilities.OrientedPageMediaWidth.Value - printerCapabilities.PageImageableArea.ExtentWidth - minLeftMargin;
-            var minBottomMargin = printerCapabilities.OrientedPageMediaHeight.Value - printerCapabilities.PageImageableArea.ExtentHeight - minTopMargin;
-
-            return new Thickness(minLeftMargin, minTopMargin, minRightMargin, minBottomMargin);
-        }
-
-        public async Task<List<FrameworkElement>> GenerateReport(Func<FrameworkElement> reportFactory, Size pageSize, Thickness pageMargins)
+        /// <param name="pageFactory">The factory that will be used to create pages.</param>
+        /// <param name="pageSize">Desired page size in WPF device independent pixel units (1/96 of an inch).</param>
+        /// <param name="pageMargins">Desired page margins. This will be subtracted from page size.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of type <see cref="ContentControl"/> that contains the pages resulting from pagination.</returns>
+        public async Task<List<UIElement>> Paginate(Func<UIElement> pageFactory, Size pageSize, Thickness pageMargins, CancellationToken cancellationToken)
         {
             Dictionary<string, ItemsControlData> paginationTracker = null;
-            var processedPages = new List<FrameworkElement>();
+            var processedPages = new List<UIElement>();
             var processing = true;
             var pageNumber = 0;
 
             while (processing)
             {
-                var newPage = reportFactory();
+                var newPage = pageFactory();
                 var pageLogicalChildren = FindLogicalChildren(newPage).ToList();
 
                 pageNumber++;
 
                 if (pageNumber == 1)
                 {
-                    //We only need to do this once to fetch the data and initialize the pagination tracker
+                    // We only need to do this once to fetch the data and initialize the pagination tracker
                     Initialize(pageLogicalChildren, out paginationTracker);
                 }
 
@@ -79,41 +51,49 @@ namespace PrintPreviewGui
                     Margin = pageMargins
                 };
 
-                // Do a layout pass to get the actual height and width of the control. Add the content afterwards to
-                // avoid calculating the content layout which can cause significant performance hits.
+                // Do a layout pass to initialize the actual height and width of the control.
+                // Set the content only afterwards to avoid significant performance hits.
                 currentPageContainer.Measure(pageSize);
                 currentPageContainer.Arrange(new Rect(new Point(), pageSize));
                 currentPageContainer.UpdateLayout();
 
-                // Add the actual content
+                // Add the actual content of the page
                 currentPageContainer.Content = newPage;
 
-                // TODO: Document
+                // First stage of processing where we set things like current page number, hiding elements, etc...
                 PreProcessing(pageLogicalChildren, pageNumber);
 
-                // Begin processing page (pagination, visibility, etc...)
-                var createNextPage = Paginate(pageLogicalChildren, paginationTracker, pageNumber);
+                // Second stage is pagination where we go through the items controls until no more items are left in paginationTracker
+                var createNextPage = Paginate(pageLogicalChildren, paginationTracker);
                 processedPages.Add(currentPageContainer);
 
                 if (!createNextPage)
                 {
+                    // Third stage after all pages have been created, here we do things like adding the total pages which can only be known after pagination
                     PostProcessing(processedPages);
                     processing = false;
                 }
 
                 // Yield control back to the current dispatcher to keep UI responsive
                 await Dispatcher.Yield();
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             return processedPages;
         }
 
-        public FixedDocument GetFixedDocumentFromProcessedPages(List<FrameworkElement> processedPages, Size pageSize)
+        /// <summary>
+        /// Take a list of <see cref="UIElement"/> and return a <see cref="FixedDocument"/> where each page contains the given <see cref="UIElement"/>.
+        /// </summary>
+        /// <param name="uiElements"><see cref="UIElement"/> derived classes to place each in a <see cref="FixedPage"/>.</param>
+        /// <param name="pageSize">Desired page size of each <see cref="FixedPage"/>. If <see cref="Paginator"/> was used to paginate, this should be the same value given to the Paginate method.</param>
+        /// <returns></returns>
+        public FixedDocument GetFixedDocumentFromPages(List<UIElement> uiElements, Size pageSize)
         {
             var document = new FixedDocument();
             document.DocumentPaginator.PageSize = pageSize;
 
-            foreach (var page in processedPages)
+            foreach (var page in uiElements)
             {
                 var fixedPage = new FixedPage
                 {
@@ -127,7 +107,7 @@ namespace PrintPreviewGui
                 fixedPage.Children.Add(page);
 
                 var pageContent = new PageContent();
-                ((IAddChild)pageContent).AddChild(fixedPage);
+                ((IAddChild) pageContent).AddChild(fixedPage);
 
                 fixedPage.Measure(pageSize);
                 fixedPage.Arrange(new Rect(new Point(), pageSize));
@@ -139,12 +119,17 @@ namespace PrintPreviewGui
             return document;
         }
 
+        /// <summary>
+        /// Called once to initialize the pagination tracker.
+        /// </summary>
+        /// <param name="pageLogicalChildren">Logical children of the first page of the element to be paginated. Used to find any ItemsControls that have the <see cref="Document.PaginateProperty"/> set to true.</param>
+        /// <param name="paginationTracker">The pagination tracker that is used throughout the pagination process.</param>
         private static void Initialize(IReadOnlyCollection<DependencyObject> pageLogicalChildren, out Dictionary<string, ItemsControlData> paginationTracker)
         {
             paginationTracker = new Dictionary<string, ItemsControlData>();
 
             var itemsControls = pageLogicalChildren.OfType<ItemsControl>()
-                .Where(i => i.GetValue(ReportHelper.PaginateProperty) is bool paginate && paginate).ToList();
+                .Where(i => i.GetValue(Document.PaginateProperty) is bool paginate && paginate).ToList();
 
             foreach (var itemsControl in itemsControls)
             {
@@ -152,7 +137,7 @@ namespace PrintPreviewGui
 
                 if (string.IsNullOrWhiteSpace(itemsControl.Name))
                 {
-                    throw new InvalidOperationException("ItemsControl must have a unique name. Set the x:Name property.");
+                    throw new InvalidOperationException("ItemsControl that will be paginated must have a unique name. Set the x:Name property.");
                 }
 
                 if (itemsControl.Items.Count <= 0)
@@ -174,7 +159,7 @@ namespace PrintPreviewGui
         {
             foreach (var dp in pageLogicalChildren)
             {
-                if (dp.GetValue(ReportHelper.VisibleOnFirstPageOnlyProperty) is bool visibleOnFirstPage)
+                if (dp.GetValue(Document.VisibleOnFirstPageOnlyProperty) is bool visibleOnFirstPage)
                 {
                     if (visibleOnFirstPage && pageNumber == 1)
                     {
@@ -186,17 +171,17 @@ namespace PrintPreviewGui
                     }
                 }
 
-                if (dp.GetValue(ReportHelper.SetCurrentPageNumberAttachedPropertyProperty) is bool setPageNumber && setPageNumber)
+                if (dp.GetValue(Document.SetCurrentPageNumberAttachedPropertyProperty) is bool setPageNumber && setPageNumber)
                 {
-                    dp.SetValue(ReportHelper.CurrentPageNumberProperty, pageNumber);
+                    dp.SetValue(Document.CurrentPageNumberProperty, pageNumber);
                 }
             }
         }
 
-        private static bool Paginate(IReadOnlyCollection<DependencyObject> pageLogicalChildren, IDictionary<string, ItemsControlData> paginationTracker, int pageNumber)
+        private static bool Paginate(IReadOnlyCollection<DependencyObject> pageLogicalChildren, IDictionary<string, ItemsControlData> paginationTracker)
         {
             var itemsControlsToPaginate = pageLogicalChildren.OfType<ItemsControl>()
-                .Where(i => i.GetValue(ReportHelper.PaginateProperty) is bool paginate && paginate).ToList();
+                .Where(i => i.GetValue(Document.PaginateProperty) is bool paginate && paginate).ToList();
 
             // Paginate lists
             foreach (var itemsControl in itemsControlsToPaginate)
@@ -250,7 +235,7 @@ namespace PrintPreviewGui
                 itemsControl.Items.Add(item);
                 itemsControl.UpdateLayout();
 
-                var itemContainer = (FrameworkElement) itemsControl.ItemContainerGenerator.ContainerFromItem(item);
+                var itemContainer = (FrameworkElement)itemsControl.ItemContainerGenerator.ContainerFromItem(item);
                 var itemsPresenter = FindVisualParent<ItemsPresenter>(itemContainer).Single();
                 var isVisible = IsElementFullyVisibleInContainer(itemsPresenter, itemContainer);
 
@@ -273,7 +258,7 @@ namespace PrintPreviewGui
             var roundedActualWidth = Math.Round(container.ActualWidth, 2);
 
             var containerRect = new Rect(0.0, 0.0, roundedActualWidth, roundedActualHeight);
-            
+
             var topLeftPointRounded = new Point(Math.Round(panelRect.TopLeft.X, 2), Math.Round(panelRect.TopLeft.Y, 2));
             var topRightPointRounded = new Point(Math.Round(panelRect.TopRight.X, 2), Math.Round(panelRect.TopRight.Y, 2));
             var bottomLeftPointRounded = new Point(Math.Round(panelRect.BottomLeft.X, 2), Math.Round(panelRect.BottomLeft.Y, 2));
@@ -283,7 +268,7 @@ namespace PrintPreviewGui
                    containerRect.Contains(bottomLeftPointRounded) && containerRect.Contains(bottomRightPointRounded);
         }
 
-        private static void PostProcessing(IReadOnlyCollection<FrameworkElement> processedPages)
+        private static void PostProcessing(IReadOnlyCollection<UIElement> processedPages)
         {
             var lastPageNumber = processedPages.Count;
             foreach (var page in processedPages)
@@ -292,9 +277,9 @@ namespace PrintPreviewGui
 
                 foreach (var dp in logicalChildren)
                 {
-                    if (dp.GetValue(ReportHelper.SetLastPageNumberAttachedPropertyProperty) is bool setLastPageNumber && setLastPageNumber)
+                    if (dp.GetValue(Document.SetLastPageNumberAttachedPropertyProperty) is bool setLastPageNumber && setLastPageNumber)
                     {
-                        dp.SetValue(ReportHelper.LastPageNumberProperty, lastPageNumber);
+                        dp.SetValue(Document.LastPageNumberProperty, lastPageNumber);
                     }
                 }
             }

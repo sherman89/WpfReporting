@@ -1,4 +1,4 @@
-﻿namespace PrintPreviewGui.Views
+﻿namespace Sherman.WpfReporting.Gui.Views
 {
     public partial class ShellView
     {
