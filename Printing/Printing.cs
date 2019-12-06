@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Sherman.WpfReporting.Lib.Models;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
@@ -37,8 +39,10 @@ namespace Sherman.WpfReporting.Lib
                 var usbPrinters = localQueues.Where(q => q.QueuePort.Name.StartsWith("USB"));
                 foreach (var usbPrinter in usbPrinters)
                 {
-                    var pageSizeCapabilities = usbPrinter.GetPrintCapabilities().PageMediaSizeCapability;
-                    printers.Add(new PrinterModel(usbPrinter.FullName, PrinterType.Usb, pageSizeCapabilities));
+                    var printCapabilities = usbPrinter.GetPrintCapabilities();
+                    var pageSizeCapabilities = printCapabilities.PageMediaSizeCapability;
+                    var pageOrientationCapabilities = GetPageOrientationCapability(printCapabilities);
+                    printers.Add(new PrinterModel(usbPrinter.FullName, PrinterType.Usb, pageSizeCapabilities, pageOrientationCapabilities));
                 }
             }
 
@@ -47,8 +51,10 @@ namespace Sherman.WpfReporting.Lib
                 var pdfPrintQueue = localQueues.SingleOrDefault(lq => lq.QueueDriver.Name == Constants.PdfPrinterDriveName);
                 if (pdfPrintQueue != null)
                 {
-                    var pageSizeCapabilities = pdfPrintQueue.GetPrintCapabilities().PageMediaSizeCapability;
-                    printers.Add(new PrinterModel(pdfPrintQueue.FullName, PrinterType.Pdf, pageSizeCapabilities));
+                    var printCapabilities = pdfPrintQueue.GetPrintCapabilities();
+                    var pageSizeCapabilities = printCapabilities.PageMediaSizeCapability;
+                    var pageOrientationCapabilities = GetPageOrientationCapability(printCapabilities);
+                    printers.Add(new PrinterModel(pdfPrintQueue.FullName, PrinterType.Pdf, pageSizeCapabilities, pageOrientationCapabilities));
                 }
             }
 
@@ -57,8 +63,10 @@ namespace Sherman.WpfReporting.Lib
                 var xpsPrintQueue = localQueues.SingleOrDefault(lq => lq.QueueDriver.Name == Constants.XpsPrinterDriveName);
                 if (xpsPrintQueue != null)
                 {
-                    var pageSizeCapabilities = xpsPrintQueue.GetPrintCapabilities().PageMediaSizeCapability;
-                    printers.Add(new PrinterModel(xpsPrintQueue.FullName, PrinterType.Xps, pageSizeCapabilities));
+                    var printCapabilities = xpsPrintQueue.GetPrintCapabilities();
+                    var pageSizeCapabilities = printCapabilities.PageMediaSizeCapability;
+                    var pageOrientationCapabilities = GetPageOrientationCapability(printCapabilities);
+                    printers.Add(new PrinterModel(xpsPrintQueue.FullName, PrinterType.Xps, pageSizeCapabilities, pageOrientationCapabilities));
                 }
             }
 
@@ -73,8 +81,10 @@ namespace Sherman.WpfReporting.Lib
 
                 foreach (var networkQueue in networkQueues)
                 {
-                    var pageSizeCapabilities = networkQueue.GetPrintCapabilities().PageMediaSizeCapability;
-                    printers.Add(new PrinterModel(networkQueue.FullName, PrinterType.Network, pageSizeCapabilities));
+                    var printCapabilities = networkQueue.GetPrintCapabilities();
+                    var pageSizeCapabilities = printCapabilities.PageMediaSizeCapability;
+                    var pageOrientationCapabilities = GetPageOrientationCapability(printCapabilities);
+                    printers.Add(new PrinterModel(networkQueue.FullName, PrinterType.Network, pageSizeCapabilities, pageOrientationCapabilities));
                     networkQueue.Dispose();
                 }
             }
@@ -85,6 +95,12 @@ namespace Sherman.WpfReporting.Lib
             }
 
             return printers;
+        }
+
+        private ReadOnlyCollection<PageOrientation> GetPageOrientationCapability(PrintCapabilities printCapabilities)
+        {
+            // I have only tested Portrain and Landscape printing, not sure if others will work.
+            return new ReadOnlyCollection<PageOrientation>(printCapabilities.PageOrientationCapability.Where(poc => poc == PageOrientation.Portrait || poc == PageOrientation.Landscape).ToList());
         }
 
         public PrintTicket GetPrintTicket(string printerName, PageMediaSize paperSize, PageOrientation pageOrientation)
@@ -171,15 +187,40 @@ namespace Sherman.WpfReporting.Lib
         }
 
         /// <summary>
-        /// Writes the <see cref="DocumentPaginator"/> to an <see cref="XpsDocument"/> in memory and returns it as a bytearray.
+        /// Writes the <see cref="FixedDocument"/> to an <see cref="XpsDocument"/> and saves it as at temporary file.
+        /// The temporary file is then read and returned as an <see cref="XpsDocument"/>. This step is necessary because
+        /// it's the only way I could get the <see cref="System.Windows.Controls.DocumentViewer"/> search feature to work.
         /// </summary>
-        /// <param name="documentPaginator"></param>
-        /// <returns></returns>
-        public byte[] GetXpsFileBytesFromDocumentPaginator(DocumentPaginator documentPaginator)
+        public XpsDocument GetXpsDocumentFromFixedDocument(FixedDocument fixedDocument)
         {
-            if (documentPaginator == null)
+            if (fixedDocument == null)
             {
-                throw new ArgumentNullException(nameof(DocumentPaginator), "DocumentPaginator cannot be null.");
+                throw new ArgumentNullException(nameof(FixedDocument), "FixedDocument cannot be null.");
+            }
+
+            var appDataLocalPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PrintPreviewGui");
+            Directory.CreateDirectory(appDataLocalPath);
+
+            var randomFileName = Path.ChangeExtension(Path.GetRandomFileName(), ".xps");
+            var tempFilePath = @$"{appDataLocalPath}\{randomFileName}";
+
+            var xpsDoc = new XpsDocument(tempFilePath, FileAccess.Write);
+            var writer = XpsDocument.CreateXpsDocumentWriter(xpsDoc);
+            writer.Write(fixedDocument);
+            xpsDoc.Close();
+
+            var doc = new XpsDocument(tempFilePath, FileAccess.Read, CompressionOption.NotCompressed);
+            return doc;
+        }
+
+        /// <summary>
+        /// Writes the <see cref="FixedDocument"/> to an <see cref="XpsDocument"/> in memory and returns it as a bytearray.
+        /// </summary>
+        public byte[] GetXpsFileBytesFromFixedDocument(FixedDocument fixedDocument)
+        {
+            if (fixedDocument == null)
+            {
+                throw new ArgumentNullException(nameof(FixedDocument), "FixedDocument cannot be null.");
             }
 
             // Convert FixedDocument to XPS file in memory
@@ -187,10 +228,10 @@ namespace Sherman.WpfReporting.Lib
             var package = Package.Open(ms, FileMode.Create);
             var doc = new XpsDocument(package);
             var writer = XpsDocument.CreateXpsDocumentWriter(doc);
-            writer.Write(documentPaginator);
+            writer.Write(fixedDocument);
             doc.Close();
             package.Close();
-            
+
             // Get XPS file bytes
             var bytes = ms.ToArray();
             ms.Dispose();

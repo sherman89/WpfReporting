@@ -23,7 +23,7 @@
         </StackPanel>
 
         <!-- List header -->
-        <Grid Grid.Row="1" Visibility="{Binding ElementName=ResultsList, Path=Visibility}" Margin="0,20,0,0">
+        <Grid Grid.Row="1" Visibility="{Binding ElementName=ReportList, Path=Visibility}" Margin="0,20,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.2*" />
                 <ColumnDefinition Width="0.6*" />

@@ -1,6 +1,6 @@
 ﻿using System.Printing;
 
-namespace Sherman.WpfReporting.Lib
+namespace Sherman.WpfReporting.Lib.Models
 {
     public class PageSizeModel
     {
