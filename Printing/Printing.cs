@@ -12,7 +12,7 @@ using System.Windows.Xps.Packaging;
 
 namespace Sherman.WpfReporting.Lib
 {
-    public class Printing
+    public class Printing : IPrinting
     {
         /// <summary>
         /// Get all printers in <see cref="PrinterType"/>.

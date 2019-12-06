@@ -12,7 +12,7 @@ using System.Windows.Threading;
 
 namespace Sherman.WpfReporting.Lib
 {
-    public class Paginator
+    public class Paginator : IPaginator
     {
         /// <summary>
         /// Take a factory that produces an instance of a UIElement derived class (i.e. <see cref="UserControl"/> with a header and list) which is used to create pages until all items in the list fit into the document.
@@ -24,7 +24,7 @@ namespace Sherman.WpfReporting.Lib
         /// <param name="pageMargins">Desired page margins. This will be subtracted from page size.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of type <see cref="ContentControl"/> that contains the pages resulting from pagination.</returns>
-        public async Task<List<UIElement>> Paginate(Func<UIElement> pageFactory, Size pageSize, Thickness pageMargins, CancellationToken cancellationToken)
+        public async Task<List<UIElement>> PaginateAsync(Func<UIElement> pageFactory, Size pageSize, Thickness pageMargins, CancellationToken cancellationToken)
         {
             Dictionary<string, ItemsControlData> paginationTracker = null;
             var processedPages = new List<UIElement>();

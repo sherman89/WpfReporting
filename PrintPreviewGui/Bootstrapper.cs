@@ -5,6 +5,7 @@ using System.Windows;
 using Autofac;
 using Caliburn.Micro;
 using Sherman.WpfReporting.Gui.ViewModels;
+using Sherman.WpfReporting.Lib;
 
 namespace Sherman.WpfReporting.Gui
 {
@@ -37,6 +38,14 @@ namespace Sherman.WpfReporting.Gui
 
             builder.RegisterType<EventAggregator>()
                 .AsImplementedInterfaces()
+                .SingleInstance();
+
+            builder.RegisterType<Printing>()
+                .As<IPrinting>()
+                .SingleInstance();
+
+            builder.RegisterType<Paginator>()
+                .As<IPaginator>()
                 .SingleInstance();
 
             _container = builder.Build();

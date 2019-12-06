@@ -17,13 +17,13 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 {
     public class ShellViewModel : Screen
     {
-        private readonly Paginator paginator;
-        private readonly Printing printing;
+        private readonly IPaginator paginator;
+        private readonly IPrinting printing;
 
-        public ShellViewModel()
+        public ShellViewModel(IPaginator paginator, IPrinting printing)
         {
-            paginator = new Paginator();
-            printing = new Printing();
+            this.paginator = paginator;
+            this.printing = printing;
 
             SupportedPrinters = new ObservableCollection<PrinterModel>();
             SupportedPageSizes = new ObservableCollection<PageSizeModel>();
@@ -41,14 +41,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
         protected override Task OnDeactivateAsync(bool close, CancellationToken cancellationToken)
         {
-            try
-            {
-                xpsDocument?.Close();
-                File.Delete(xpsDocument?.Uri.AbsolutePath);
-            }
-            catch
-            {
-            }
+            CleanXpsDocumentResources();
 
             return base.OnDeactivateAsync(close, cancellationToken);
         }
@@ -153,13 +146,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         private int selectedReport;
         public async Task LoadReport(int reportNumber)
         {
-            if (xpsDocument != null)
-            {
-                xpsDocument.Close();
-                File.Delete(xpsDocument.Uri.AbsolutePath);
-                xpsDocument = null;
-            }
-
+            CleanXpsDocumentResources();
             selectedReport = reportNumber;
 
             Func<UIElement> reportFactory;
@@ -189,7 +176,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 var printerMinMargins = printing.GetMinimumPageMargins(printCapabilities);
                 AdjustMargins(ref desiredMargin, printerMinMargins);
 
-                var pages = await paginator.Paginate(reportFactory, pageSize, desiredMargin, CancellationToken.None);
+                var pages = await paginator.PaginateAsync(reportFactory, pageSize, desiredMargin, CancellationToken.None);
                 var fixedDocument = paginator.GetFixedDocumentFromPages(pages, pageSize);
 
                 // We could simply now assign the fixedDocument to GeneratedDocument
@@ -199,6 +186,22 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
                 xpsDocument = printing.GetXpsDocumentFromFixedDocument(fixedDocument);
                 GeneratedDocument = xpsDocument.GetFixedDocumentSequence();
+            }
+        }
+
+        private void CleanXpsDocumentResources()
+        {
+            if (xpsDocument != null)
+            {
+                try
+                {
+                    xpsDocument.Close();
+                    File.Delete(xpsDocument.Uri.AbsolutePath);
+                    xpsDocument = null;
+                }
+                catch
+                {
+                }
             }
         }
 
