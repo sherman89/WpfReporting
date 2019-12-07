@@ -7,6 +7,7 @@ using System.IO.Packaging;
 using System.Linq;
 using System.Printing;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Xps.Packaging;
 
@@ -124,15 +125,38 @@ namespace Sherman.WpfReporting.Lib
                 };
 
                 var mergeTicketResult = selectedQueue.MergeAndValidatePrintTicket(selectedQueue.DefaultPrintTicket, myTicket);
-                //TODO: Validate merged ticket?
                 
-                return mergeTicketResult.ValidatedPrintTicket;
+                var isValid = ValidateMergedPrintTicket(myTicket, mergeTicketResult.ValidatedPrintTicket);
+                if (isValid)
+                {
+                    return mergeTicketResult.ValidatedPrintTicket;
+                }
+                else
+                {
+                    throw new Exception($"PrintTicket settings are incompatible with printer.");
+                }
             }
 
             throw new Exception($"Printer name \"{printerName}\" not found in local or network queues.");
         }
 
+        private bool ValidateMergedPrintTicket(PrintTicket desiredTicket, PrintTicket actualTicket)
+        {
+            return desiredTicket.PageMediaSize.PageMediaSizeName == actualTicket.PageMediaSize.PageMediaSizeName && 
+                desiredTicket.PageOrientation == actualTicket.PageOrientation &&
+                desiredTicket.OutputColor == actualTicket.OutputColor &&
+                desiredTicket.CopyCount == actualTicket.CopyCount;
+        }
+
         public PrintCapabilities GetPrinterCapabilitiesForPrintTicket(PrintTicket printTicket, string printerName)
+        {
+            using (var queue = GetPrintQueue(printerName))
+            {
+                return queue?.GetPrintCapabilities(printTicket);
+            }
+        }
+
+        private PrintQueue GetPrintQueue(string printerName)
         {
             using (var printServer = new PrintServer())
             {
@@ -140,11 +164,7 @@ namespace Sherman.WpfReporting.Lib
                 // but giving the queue description strangely works, but this is not a safe solution.
                 // Instead we just get all queues and filter them, that always works.
                 var queues = printServer.GetPrintQueues(new[] { EnumeratedPrintQueueTypes.Local, EnumeratedPrintQueueTypes.Connections });
-
-                using (var queue = queues.SingleOrDefault(pq => pq.FullName == printerName))
-                {
-                    return queue?.GetPrintCapabilities(printTicket);
-                }
+                return queues.SingleOrDefault(pq => pq.FullName == printerName);
             }
         }
 
@@ -237,6 +257,26 @@ namespace Sherman.WpfReporting.Lib
             ms.Dispose();
 
             return bytes;
+        }
+
+        public void PrintDocument(string printerName, IDocumentPaginatorSource document, string documentTitle, PrintTicket printTicket)
+        {
+            if (!printTicket.PageMediaSize.Width.HasValue || !printTicket.PageMediaSize.Height.HasValue)
+            {
+                throw new Exception("PrintTicket missing page size information.");
+            }
+
+            using (var printQueue = GetPrintQueue(printerName))
+            {
+                var dlg = new PrintDialog
+                {
+                    PrintTicket = printTicket,
+                    PrintQueue = printQueue,
+                };
+
+                document.DocumentPaginator.PageSize = new Size(printTicket.PageMediaSize.Width.Value, printTicket.PageMediaSize.Height.Value);
+                dlg.PrintDocument(document.DocumentPaginator, documentTitle);
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Sherman.WpfReporting.Lib
     public interface IPaginator
     {
         Task<List<UIElement>> PaginateAsync(Func<UIElement> pageFactory, Size pageSize, Thickness pageMargins, CancellationToken cancellationToken);
+
         FixedDocument GetFixedDocumentFromPages(List<UIElement> uiElements, Size pageSize);
 
     }

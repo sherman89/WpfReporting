@@ -23,13 +23,15 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         private readonly IPrinting printing;
         private readonly IDialogService dialogService;
         private readonly ProgressDialogViewModel progressDialog;
+        private readonly IDispatcher dispatcher;
 
-        public MainViewModel(IPaginator paginator, IPrinting printing, IDialogService dialogService, ProgressDialogViewModel progressDialog)
+        public MainViewModel(IPaginator paginator, IPrinting printing, IDialogService dialogService, ProgressDialogViewModel progressDialog, IDispatcher dispatcher)
         {
             this.paginator = paginator;
             this.printing = printing;
             this.dialogService = dialogService;
             this.progressDialog = progressDialog;
+            this.dispatcher = dispatcher;
 
             SupportedPrinters = new ObservableCollection<PrinterModel>();
             SupportedPageSizes = new ObservableCollection<PageSizeModel>();
@@ -191,6 +193,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             {
                 generatedDocument = value;
                 NotifyOfPropertyChange(() => GeneratedDocument);
+                NotifyOfPropertyChange(() => CanPrintDocument);
             }
         }
 
@@ -296,6 +299,27 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             if (pageMargins.Bottom < minimumMargins.Bottom)
             {
                 pageMargins.Bottom = minimumMargins.Bottom;
+            }
+        }
+
+        public bool CanPrintDocument => GeneratedDocument != null;
+
+        public async Task Print()
+        {
+            dialogService.Open(progressDialog);
+
+            try
+            {
+                // PrintDocument will block the UI thread, so progress dialog might not appear
+                // Yield control back to the current dispatcher to give UI a chance to show it
+                await dispatcher.Yield();
+
+                var printTicket = printing.GetPrintTicket(SelectedPrinter.FullName, SelectedPageSize.PageMediaSize, SelectedPageOrientation.PageOrientation);
+                printing.PrintDocument(SelectedPrinter.FullName, generatedDocument, "Hello from WPF!", printTicket);
+            }
+            finally
+            {
+                dialogService.Close(progressDialog);
             }
         }
     }

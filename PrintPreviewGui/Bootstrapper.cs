@@ -53,6 +53,10 @@ namespace Sherman.WpfReporting.Gui
                 .As<IDialogService>()
                 .InstancePerLifetimeScope();
 
+            builder.RegisterType<Dispatcher>()
+                .As<IDispatcher>()
+                .SingleInstance();
+
             _container = builder.Build();
         }
 

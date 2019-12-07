@@ -40,26 +40,36 @@
 
         <DocumentViewer Grid.Column="2" Document="{Binding GeneratedDocument}" />
 
-        <StackPanel Grid.Column="4">
-            <TextBlock Text="Printer:" FontWeight="Bold" Margin="0,0,0,5" />
-            <ComboBox ItemsSource="{Binding SupportedPrinters}"
+        <Grid Grid.Column="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Printer:" FontWeight="Bold" Margin="0,0,0,5" />
+                <ComboBox ItemsSource="{Binding SupportedPrinters}"
                       SelectedItem="{Binding SelectedPrinter}"
                       ItemTemplate="{StaticResource PrinterComboBoxItemTemplate}"
                       cm:Message.Attach="[Event SelectionChanged] = [Action LoadPrinterCapabilities]"
                       Margin="0,0,0,10" />
 
-            <TextBlock Text="Page size:" FontWeight="Bold" Margin="0,0,0,5" />
-            <ComboBox ItemsSource="{Binding SupportedPageSizes}"
+                <TextBlock Text="Page size:" FontWeight="Bold" Margin="0,0,0,5" />
+                <ComboBox ItemsSource="{Binding SupportedPageSizes}"
                       SelectedItem="{Binding SelectedPageSize}"
                       ItemTemplate="{StaticResource PageSizeComboBoxItemTemplate}"
                       cm:Message.Attach="[Event SelectionChanged] = [Action LoadReport]"
                       Margin="0,0,0,10" />
 
-            <TextBlock Text="Page orientation:" FontWeight="Bold" Margin="0,0,0,5" />
-            <ComboBox ItemsSource="{Binding SupportedPageOrientations}"
+                <TextBlock Text="Page orientation:" FontWeight="Bold" Margin="0,0,0,5" />
+                <ComboBox ItemsSource="{Binding SupportedPageOrientations}"
                       SelectedItem="{Binding SelectedPageOrientation}"
                       ItemTemplate="{StaticResource OrientationComboBoxItemTemplate}"
                       cm:Message.Attach="[Event SelectionChanged] = [Action LoadReport]" />
-        </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Row="1" Content="Print!" cm:Message.Attach="Print"
+                    IsEnabled="{Binding CanPrintDocument}" />
+        </Grid>
     </Grid>
 </UserControl>
