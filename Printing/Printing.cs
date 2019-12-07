@@ -106,34 +106,29 @@ namespace Sherman.WpfReporting.Lib
 
         public PrintTicket GetPrintTicket(string printerName, PageMediaSize paperSize, PageOrientation pageOrientation)
         {
-            PrintQueueCollection printQueues;
-            using (var printServer = new PrintServer())
+            using (var printQueue = GetPrintQueue(printerName))
             {
-                var flags = new[] { EnumeratedPrintQueueTypes.Local, EnumeratedPrintQueueTypes.Connections };
-                printQueues = printServer.GetPrintQueues(flags);
-            }
+                if (printQueue != null)
+                {
+                    var myTicket = new PrintTicket
+                    {
+                        CopyCount = 1,
+                        PageOrientation = pageOrientation,
+                        OutputColor = OutputColor.Color,
+                        PageMediaSize = paperSize
+                    };
 
-            var selectedQueue = printQueues.SingleOrDefault(pq => pq.FullName == printerName);
-            if (selectedQueue != null)
-            {
-                var myTicket = new PrintTicket
-                {
-                    CopyCount = 1,
-                    PageOrientation = pageOrientation,
-                    OutputColor = OutputColor.Color,
-                    PageMediaSize = paperSize
-                };
+                    var mergeTicketResult = printQueue.MergeAndValidatePrintTicket(printQueue.DefaultPrintTicket, myTicket);
 
-                var mergeTicketResult = selectedQueue.MergeAndValidatePrintTicket(selectedQueue.DefaultPrintTicket, myTicket);
-                
-                var isValid = ValidateMergedPrintTicket(myTicket, mergeTicketResult.ValidatedPrintTicket);
-                if (isValid)
-                {
-                    return mergeTicketResult.ValidatedPrintTicket;
-                }
-                else
-                {
-                    throw new Exception($"PrintTicket settings are incompatible with printer.");
+                    var isValid = ValidateMergedPrintTicket(myTicket, mergeTicketResult.ValidatedPrintTicket);
+                    if (isValid)
+                    {
+                        return mergeTicketResult.ValidatedPrintTicket;
+                    }
+                    else
+                    {
+                        throw new Exception($"PrintTicket settings are incompatible with printer.");
+                    }
                 }
             }
 
