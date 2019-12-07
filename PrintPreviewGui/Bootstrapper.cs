@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Autofac;
 using Caliburn.Micro;
+using Sherman.WpfReporting.Gui.DialogManagement;
 using Sherman.WpfReporting.Gui.ViewModels;
 using Sherman.WpfReporting.Lib;
 
@@ -47,6 +48,10 @@ namespace Sherman.WpfReporting.Gui
             builder.RegisterType<Paginator>()
                 .As<IPaginator>()
                 .SingleInstance();
+
+            builder.RegisterType<DialogService>()
+                .As<IDialogService>()
+                .InstancePerLifetimeScope();
 
             _container = builder.Build();
         }

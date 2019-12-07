@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Autofac" Version="4.9.4" />
-    <PackageReference Include="Caliburn.Micro" Version="4.0.102-alpha" />
-    <PackageReference Include="Caliburn.Micro.Core" Version="4.0.102-alpha" />
+    <PackageReference Include="Caliburn.Micro" Version="4.0.104-alpha" />
+    <PackageReference Include="Caliburn.Micro.Core" Version="4.0.104-alpha" />
   </ItemGroup>
 
   <ItemGroup>
