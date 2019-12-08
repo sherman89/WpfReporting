@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 
@@ -8,6 +9,7 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 {
     public class DialogService : Conductor<IDialog>.Collection.AllActive, IDialogService
     {
+        //TODO: Make this readonly
         public IObservableCollection<IDialog> OpenDialogs => Items;
         public bool AnyOpenDialogs => OpenDialogs.Any();
 
@@ -15,25 +17,26 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
         public event EventHandler<IDialog> DialogClosed;
 
         private readonly Dictionary<IDialog, int> instanceCounter = new Dictionary<IDialog, int>();
-        private readonly object locker = new object();
 
-        public void Open(IDialog dialog)
+        private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
+        public async Task OpenAsync(IDialog dialog, CancellationToken cancellationToken)
         {
-            AddDialog(dialog);
+            await AddDialogAsync(dialog, cancellationToken);
             NotifyOfPropertyChange(() => AnyOpenDialogs);
         }
 
-        public void Close(IDialog dialog)
+        public async Task CloseAsync(IDialog dialog, CancellationToken cancellationToken)
         {
-            RemoveDialog(dialog);
+            await RemoveDialogAsync(dialog, cancellationToken);
             NotifyOfPropertyChange(() => AnyOpenDialogs);
         }
 
-        public async Task<T> OpenModalAsync<T>(IModalDialog<T> dialog)
+        public async Task<T> OpenModalAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken)
         {
-            var task = dialog.ConfirmAsync();
+            var task = dialog.ConfirmAsync(cancellationToken);
 
-            AddDialog(dialog);
+            await AddDialogAsync(dialog, cancellationToken);
 
             NotifyOfPropertyChange(() => AnyOpenDialogs);
 
@@ -43,16 +46,18 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
             }
             finally
             {
-                RemoveDialog(dialog);
+                await RemoveDialogAsync(dialog, cancellationToken);
                 NotifyOfPropertyChange(() => AnyOpenDialogs);
             }
 
             return await task;
         }
 
-        private void AddDialog(IDialog dialog)
+        private async Task AddDialogAsync(IDialog dialog, CancellationToken cancellationToken)
         {
-            lock (locker)
+            await semaphore.WaitAsync();
+
+            try
             {
                 if (Items.Contains(dialog))
                 {
@@ -73,14 +78,21 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
                 dialog.IsDialogEnabled = true;
                 Items.Add(dialog);
+                await ScreenExtensions.TryActivateAsync(dialog, cancellationToken);
 
                 DialogOpened?.Invoke(this, dialog);
             }
+            finally
+            {
+                semaphore.Release();
+            }
         }
 
-        private void RemoveDialog(IDialog dialog)
+        private async Task RemoveDialogAsync(IDialog dialog, CancellationToken cancellationToken)
         {
-            lock (locker)
+            await semaphore.WaitAsync();
+
+            try
             {
                 if (instanceCounter.ContainsKey(dialog))
                 {
@@ -94,6 +106,7 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
                 }
 
                 Items.Remove(dialog);
+                await ScreenExtensions.TryDeactivateAsync(dialog, true, cancellationToken);
 
                 var topMostDialog = OpenDialogs.LastOrDefault();
                 if (topMostDialog != null)
@@ -102,6 +115,10 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
                 }
 
                 DialogClosed?.Invoke(this, dialog);
+            }
+            finally
+            {
+                semaphore.Release();
             }
         }
     }

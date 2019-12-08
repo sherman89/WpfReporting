@@ -22,15 +22,13 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         private readonly IPaginator paginator;
         private readonly IPrinting printing;
         private readonly IDialogService dialogService;
-        private readonly ProgressDialogViewModel progressDialog;
         private readonly IDispatcher dispatcher;
 
-        public MainViewModel(IPaginator paginator, IPrinting printing, IDialogService dialogService, ProgressDialogViewModel progressDialog, IDispatcher dispatcher)
+        public MainViewModel(IPaginator paginator, IPrinting printing, IDialogService dialogService, IDispatcher dispatcher)
         {
             this.paginator = paginator;
             this.printing = printing;
             this.dialogService = dialogService;
-            this.progressDialog = progressDialog;
             this.dispatcher = dispatcher;
 
             SupportedPrinters = new ObservableCollection<PrinterModel>();
@@ -115,6 +113,8 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
         private async Task InitializePrinters(CancellationToken cancellationToken)
         {
+            var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
+
             try
             {
                 // Start potentially long running task on separate thread
@@ -128,7 +128,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 var isCompleted = getPrintersTask.Wait(300);
                 if (!isCompleted)
                 {
-                    dialogService.Open(progressDialog);
+                    await dialogService.OpenAsync(progressDialog, cancellationToken);
                 }
 
                 var printers = await getPrintersTask;
@@ -141,9 +141,12 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
                 SelectedPrinter = SupportedPrinters.FirstOrDefault();
             }
+            catch (OperationCanceledException)
+            {
+            }
             finally
             {
-                dialogService.Close(progressDialog);
+                await dialogService.CloseAsync(progressDialog, cancellationToken);
             }
         }
 
@@ -211,10 +214,13 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         private int selectedReport;
         public async Task LoadReport(int reportNumber)
         {
-            dialogService.Open(progressDialog);
+            var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: true);
 
             try
             {
+                await dialogService.OpenAsync(progressDialog, CancellationToken.None);
+                var dialogCancellationToken = progressDialog.DialogCancellationToken;
+
                 CleanXpsDocumentResources();
                 selectedReport = reportNumber;
 
@@ -245,7 +251,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                     var printerMinMargins = printing.GetMinimumPageMargins(printCapabilities);
                     AdjustMargins(ref desiredMargin, printerMinMargins);
 
-                    var pages = await paginator.PaginateAsync(reportFactory, pageSize, desiredMargin, CancellationToken.None);
+                    var pages = await paginator.PaginateAsync(reportFactory, pageSize, desiredMargin, dialogCancellationToken);
                     var fixedDocument = paginator.GetFixedDocumentFromPages(pages, pageSize);
 
                     // We could simply now assign the fixedDocument to GeneratedDocument
@@ -257,9 +263,12 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                     GeneratedDocument = xpsDocument.GetFixedDocumentSequence();
                 }
             }
+            catch (OperationCanceledException)
+            {
+            }
             finally
             {
-                dialogService.Close(progressDialog);
+                await dialogService.CloseAsync(progressDialog, CancellationToken.None);
             }
         }
 
@@ -306,10 +315,12 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
         public async Task Print()
         {
-            dialogService.Open(progressDialog);
+            var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
 
             try
             {
+                await dialogService.OpenAsync(progressDialog, CancellationToken.None);
+
                 // PrintDocument will block the UI thread, so progress dialog might not appear
                 // Yield control back to the current dispatcher to give UI a chance to show it
                 await dispatcher.Yield();
@@ -319,7 +330,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
             finally
             {
-                dialogService.Close(progressDialog);
+                await dialogService.CloseAsync(progressDialog, CancellationToken.None);
             }
         }
     }

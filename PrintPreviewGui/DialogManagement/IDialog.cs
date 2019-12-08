@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace Sherman.WpfReporting.Gui.DialogManagement
 {
@@ -9,6 +10,6 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
     public interface IModalDialog<T> : IDialog
     {
-        Task<T> ConfirmAsync();
+        Task<T> ConfirmAsync(CancellationToken cancellationToken);
     }
 }

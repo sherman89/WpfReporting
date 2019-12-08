@@ -7,7 +7,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary>
                     <gui:Bootstrapper x:Key="Bootstrapper" />
+                    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
                 </ResourceDictionary>
+                <ResourceDictionary Source="Styles/AppStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
