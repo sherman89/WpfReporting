@@ -69,7 +69,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             CleanXpsDocumentResources();
         }
 
-        public ObservableCollection<PrinterModel> SupportedPrinters { get; set; }
+        public ObservableCollection<PrinterModel> SupportedPrinters { get; }
 
         private PrinterModel selectedPrinter;
         public PrinterModel SelectedPrinter
@@ -123,7 +123,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
         }
 
-        public ObservableCollection<PageSizeModel> SupportedPageSizes { get; set; }
+        public ObservableCollection<PageSizeModel> SupportedPageSizes { get; }
 
         private PageSizeModel selectedPageSize;
         public PageSizeModel SelectedPageSize
@@ -159,7 +159,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
         }
 
-        public ObservableCollection<PageOrientationModel> SupportedPageOrientations { get; set; }
+        public ObservableCollection<PageOrientationModel> SupportedPageOrientations { get; }
 
         private PageOrientationModel selectedPageOrientation;
         public PageOrientationModel SelectedPageOrientation
@@ -385,10 +385,13 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 {
                     xpsDocument.Close();
                     File.Delete(xpsDocument.Uri.AbsolutePath);
-                    xpsDocument = null;
                 }
                 catch
                 {
+                }
+                finally
+                {
+                    xpsDocument = null;
                 }
             }
         }
