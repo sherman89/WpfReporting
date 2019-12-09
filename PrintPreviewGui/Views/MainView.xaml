@@ -33,9 +33,9 @@
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0">
             <TextBlock Text="Test reports:" FontWeight="Bold" Margin="0,0,0,10" />
-            <Button Content="Report 1" cm:Message.Attach="LoadReport(1)" Margin="0,0,0,10" />
-            <Button Content="Report 2" cm:Message.Attach="LoadReport(2)" Margin="0,0,0,10" />
-            <Button Content="Report 3" cm:Message.Attach="LoadReport(3)" Margin="0,0,0,10" />
+            <Button Content="Report 1" cm:Message.Attach="OnReportSelected(1)" Margin="0,0,0,10" />
+            <Button Content="Report 2" cm:Message.Attach="OnReportSelected(2)" Margin="0,0,0,10" />
+            <Button Content="Report 3" cm:Message.Attach="OnReportSelected(3)" Margin="0,0,0,10" />
         </StackPanel>
 
         <DocumentViewer Grid.Column="2" Document="{Binding GeneratedDocument}" />
@@ -51,24 +51,24 @@
                 <ComboBox ItemsSource="{Binding SupportedPrinters}"
                       SelectedItem="{Binding SelectedPrinter}"
                       ItemTemplate="{StaticResource PrinterComboBoxItemTemplate}"
-                      cm:Message.Attach="[Event SelectionChanged] = [Action LoadPrinterCapabilities]"
+                      cm:Message.Attach="[Event SelectionChanged] = [Action OnPrinterChanged]"
                       Margin="0,0,0,10" />
 
                 <TextBlock Text="Page size:" FontWeight="Bold" Margin="0,0,0,5" />
                 <ComboBox ItemsSource="{Binding SupportedPageSizes}"
                       SelectedItem="{Binding SelectedPageSize}"
                       ItemTemplate="{StaticResource PageSizeComboBoxItemTemplate}"
-                      cm:Message.Attach="[Event SelectionChanged] = [Action LoadReport]"
+                      cm:Message.Attach="[Event SelectionChanged] = [Action OnPageSizeChanged]"
                       Margin="0,0,0,10" />
 
                 <TextBlock Text="Page orientation:" FontWeight="Bold" Margin="0,0,0,5" />
                 <ComboBox ItemsSource="{Binding SupportedPageOrientations}"
                       SelectedItem="{Binding SelectedPageOrientation}"
                       ItemTemplate="{StaticResource OrientationComboBoxItemTemplate}"
-                      cm:Message.Attach="[Event SelectionChanged] = [Action LoadReport]" />
+                      cm:Message.Attach="[Event SelectionChanged] = [Action OnPageOrientationChanged]" />
             </StackPanel>
 
-            <Button Grid.Row="1" Content="Print!" cm:Message.Attach="Print"
+            <Button Grid.Row="1" Content="Print!" cm:Message.Attach="OnPrint"
                     IsEnabled="{Binding CanPrintDocument}" />
         </Grid>
     </Grid>

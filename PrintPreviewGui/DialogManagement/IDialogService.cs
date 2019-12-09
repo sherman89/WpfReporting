@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 
@@ -10,11 +11,11 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
         bool AnyOpenDialogs { get; }
 
-        void Open(IDialog dialog);
+        Task OpenAsync(IDialog dialog, CancellationToken cancellationToken);
 
-        void Close(IDialog dialog);
+        Task CloseAsync(IDialog dialog, CancellationToken cancellationToken);
 
-        Task<T> OpenModalAsync<T>(IModalDialog<T> dialog);
+        Task<T> AwaitModalAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken);
 
         event EventHandler<IDialog> DialogOpened;
 

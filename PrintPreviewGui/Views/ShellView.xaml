@@ -9,7 +9,7 @@
         mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800"
         Background="White" MinWidth="800" MinHeight="600" Width="1280" Height="800"
         d:DataContext="{d:DesignInstance viewModels:ShellViewModel, IsDesignTimeCreatable=True}" 
-        cm:Bind.AtDesignTime="True">
+        cm:Bind.AtDesignTime="True" Title="WPF Pagination and Printing">
     <Grid>
         <ContentControl x:Name="ActiveItem" cm:View.Model="{Binding ActiveItem, Mode=OneWay}" Focusable="False" />
 
@@ -31,9 +31,9 @@
                         <Setter.Value>
                             <DataTemplate DataType="{x:Type dialogMgmt:IDialog}">
                                 <Grid>
-                                    <Rectangle Fill="Black" Opacity="0.7" />
+                                    <Rectangle Fill="Black" Opacity="0.8" />
                                     <ContentControl cm:View.Model="{Binding}" Focusable="False"
-                                                    IsEnabled="{Binding IsEnabled, Mode=OneWay}" />
+                                                    IsEnabled="{Binding IsDialogEnabled, Mode=OneWay}" />
                                 </Grid>
                             </DataTemplate>
                         </Setter.Value>

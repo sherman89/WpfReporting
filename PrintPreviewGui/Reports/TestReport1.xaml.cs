@@ -6,7 +6,7 @@
         {
             InitializeComponent();
 
-            for (var i = 1; i <= 100; i++)
+            for (var i = 1; i <= 1000; i++)
             {
                 ReportList.Items.Add(new ReportDataModel(i, $"Row {i}", $"This is the description of row number {i}"));
             }
