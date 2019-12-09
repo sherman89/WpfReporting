@@ -20,9 +20,9 @@
                                           SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"  />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="Button.IsDefaulted" Value="true">
+                        <!--<Trigger Property="Button.IsDefaulted" Value="true">
                             <Setter TargetName="contentPresenter" Property="TextElement.FontStyle" Value="Italic" />
-                        </Trigger>
+                        </Trigger>-->
                         <Trigger Property="IsMouseOver" Value="true">
                             <Setter Property="Background" TargetName="border" Value="DimGray" />
                         </Trigger>
@@ -36,6 +36,21 @@
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style>
+                    <Setter Property="Control.Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Margin="2" Stroke="White" StrokeThickness="1"
+                                           SnapsToDevicePixels="true" StrokeDashArray="1 2"
+                                           RadiusX="3" RadiusY="3" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
             </Setter.Value>
         </Setter>
     </Style>

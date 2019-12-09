@@ -32,21 +32,27 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
             NotifyOfPropertyChange(() => AnyOpenDialogs);
         }
 
-        public async Task<T> AwaitResponseAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken)
+        public async Task<T> AwaitModalAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken)
         {
             var confirmTask = dialog.ConfirmAsync(cancellationToken);
-
-            await AddDialogAsync(dialog, cancellationToken);
-
-            NotifyOfPropertyChange(() => AnyOpenDialogs);
+            bool addDialogCancelled = true;
 
             try
             {
+                await AddDialogAsync(dialog, cancellationToken);
+                addDialogCancelled = false;
+
+                NotifyOfPropertyChange(() => AnyOpenDialogs);
+
                 await confirmTask;
             }
             finally
             {
-                await RemoveDialogAsync(dialog, CancellationToken.None);
+                if (!addDialogCancelled)
+                {
+                    await RemoveDialogAsync(dialog, CancellationToken.None);
+                }
+
                 NotifyOfPropertyChange(() => AnyOpenDialogs);
             }
 

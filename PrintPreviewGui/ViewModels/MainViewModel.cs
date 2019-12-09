@@ -202,6 +202,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             allowOnPageOrientationChanged = false;
 
             var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
+            bool openDialogCancelled = true;
 
             try
             {
@@ -217,6 +218,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 if (!isCompleted)
                 {
                     await dialogService.OpenAsync(progressDialog, cancellationToken);
+                    openDialogCancelled = false;
                 }
 
                 var printers = await getPrintersTask;
@@ -240,7 +242,10 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 allowOnPageSizeChanged = true;
                 allowOnPageOrientationChanged = true;
 
-                await dialogService.CloseAsync(progressDialog, cancellationToken);
+                if (!openDialogCancelled)
+                {
+                    await dialogService.CloseAsync(progressDialog, cancellationToken);
+                }
             }
         }
 
@@ -412,6 +417,25 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         }
 
         public bool CanPrintDocument => GeneratedDocument != null;
+
+        public async Task OnPrint()
+        {
+            var message = "Are you sure you want to print this document?";
+            var confirmDialog = new ConfirmDialogViewModel(message, "Yes", "No");
+
+            try
+            {
+                var print = await dialogService.AwaitModalAsync(confirmDialog, CancellationToken.None);
+
+                if (print)
+                {
+                    await Print();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
 
         public async Task Print()
         {
