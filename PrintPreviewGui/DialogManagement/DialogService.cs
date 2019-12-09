@@ -9,8 +9,8 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 {
     public class DialogService : Conductor<IDialog>.Collection.AllActive, IDialogService
     {
-        //TODO: Make this readonly
         public IObservableCollection<IDialog> OpenDialogs => Items;
+
         public bool AnyOpenDialogs => OpenDialogs.Any();
 
         public event EventHandler<IDialog> DialogOpened;
@@ -32,9 +32,9 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
             NotifyOfPropertyChange(() => AnyOpenDialogs);
         }
 
-        public async Task<T> OpenModalAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken)
+        public async Task<T> AwaitResponseAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken)
         {
-            var task = dialog.ConfirmAsync(cancellationToken);
+            var confirmTask = dialog.ConfirmAsync(cancellationToken);
 
             await AddDialogAsync(dialog, cancellationToken);
 
@@ -42,15 +42,15 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
             try
             {
-                await task;
+                await confirmTask;
             }
             finally
             {
-                await RemoveDialogAsync(dialog, cancellationToken);
+                await RemoveDialogAsync(dialog, CancellationToken.None);
                 NotifyOfPropertyChange(() => AnyOpenDialogs);
             }
 
-            return await task;
+            return await confirmTask;
         }
 
         private async Task AddDialogAsync(IDialog dialog, CancellationToken cancellationToken)
@@ -59,6 +59,11 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
             try
             {
+                if (dialog is IActivate activatable && !activatable.IsActive)
+                {
+                    await ScreenExtensions.TryActivateAsync(dialog, cancellationToken);
+                }
+
                 if (Items.Contains(dialog))
                 {
                     if (!instanceCounter.ContainsKey(dialog))
@@ -78,7 +83,6 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
                 dialog.IsDialogEnabled = true;
                 Items.Add(dialog);
-                await ScreenExtensions.TryActivateAsync(dialog, cancellationToken);
 
                 DialogOpened?.Invoke(this, dialog);
             }
@@ -94,6 +98,11 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
             try
             {
+                if (dialog is IActivate activatable && activatable.IsActive)
+                {
+                    await ScreenExtensions.TryDeactivateAsync(dialog, true, cancellationToken);
+                }
+
                 if (instanceCounter.ContainsKey(dialog))
                 {
                     var remaining = instanceCounter[dialog]--;
@@ -106,7 +115,6 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
                 }
 
                 Items.Remove(dialog);
-                await ScreenExtensions.TryDeactivateAsync(dialog, true, cancellationToken);
 
                 var topMostDialog = OpenDialogs.LastOrDefault();
                 if (topMostDialog != null)

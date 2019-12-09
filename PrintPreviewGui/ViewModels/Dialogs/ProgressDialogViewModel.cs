@@ -43,19 +43,13 @@ namespace Sherman.WpfReporting.Gui.ViewModels.Dialogs
 
         protected override async Task OnDeactivateAsync(bool close, CancellationToken cancellationToken)
         {
+            await base.OnDeactivateAsync(close, cancellationToken);
+
             try
             {
-                await base.OnDeactivateAsync(close, cancellationToken);
-
-                try
-                {
-                    cts?.Dispose();
-                }
-                catch (ObjectDisposedException)
-                {
-                }
+                cts?.Dispose();
             }
-            catch(OperationCanceledException)
+            catch (ObjectDisposedException)
             {
             }
         }

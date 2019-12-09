@@ -15,7 +15,7 @@ namespace Sherman.WpfReporting.Gui.DialogManagement
 
         Task CloseAsync(IDialog dialog, CancellationToken cancellationToken);
 
-        Task<T> OpenModalAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken);
+        Task<T> AwaitResponseAsync<T>(IModalDialog<T> dialog, CancellationToken cancellationToken);
 
         event EventHandler<IDialog> DialogOpened;
 

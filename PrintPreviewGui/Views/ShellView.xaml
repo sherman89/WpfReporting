@@ -33,7 +33,7 @@
                                 <Grid>
                                     <Rectangle Fill="Black" Opacity="0.7" />
                                     <ContentControl cm:View.Model="{Binding}" Focusable="False"
-                                                    IsEnabled="{Binding IsEnabled, Mode=OneWay}" />
+                                                    IsEnabled="{Binding IsDialogEnabled, Mode=OneWay}" />
                                 </Grid>
                             </DataTemplate>
                         </Setter.Value>

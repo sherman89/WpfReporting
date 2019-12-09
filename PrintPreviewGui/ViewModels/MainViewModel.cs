@@ -24,6 +24,10 @@ namespace Sherman.WpfReporting.Gui.ViewModels
         private readonly IDialogService dialogService;
         private readonly IDispatcher dispatcher;
 
+        private bool allowOnPrinterChanged = true;
+        private bool allowOnPageOrientationChanged = true;
+        private bool allowOnPageSizeChanged = true;
+
         public MainViewModel(IPaginator paginator, IPrinting printing, IDialogService dialogService, IDispatcher dispatcher)
         {
             this.paginator = paginator;
@@ -53,17 +57,16 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             // Fire and forget
             Execute.OnUIThreadAsync(() => 
             { 
-                return InitializePrinters(cancellationToken);
+                return Initialize(cancellationToken);
             });
 
             return base.OnActivateAsync(cancellationToken);
         }
 
-        protected override Task OnDeactivateAsync(bool close, CancellationToken cancellationToken)
+        protected async override Task OnDeactivateAsync(bool close, CancellationToken cancellationToken)
         {
+            await base.OnDeactivateAsync(close, cancellationToken);
             CleanXpsDocumentResources();
-
-            return base.OnDeactivateAsync(close, cancellationToken);
         }
 
         public ObservableCollection<PrinterModel> SupportedPrinters { get; set; }
@@ -76,6 +79,47 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             {
                 selectedPrinter = value;
                 NotifyOfPropertyChange(() => SelectedPrinter);
+            }
+        }
+
+        public async Task OnPrinterChanged()
+        {
+            if (!allowOnPrinterChanged)
+            {
+                return;
+            }
+
+            // Updating printers supported page sizes and page oritentations will
+            // the selected page/orientation to trigger the SelectionChanged event
+            // from XAML, and it will happen twice, so we temporarily disable it
+            // then reload the report manually after updating of UI is done.
+
+            allowOnPageSizeChanged = false;
+            allowOnPageOrientationChanged = false;
+
+            LoadPrinterPageSizes();
+            LoadPrinterPageOrientations();
+
+            allowOnPageSizeChanged = true;
+            allowOnPageOrientationChanged = true;
+
+            if (selectedReport != null)
+            {
+                var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
+
+                try
+                {
+                    await dialogService.OpenAsync(progressDialog, CancellationToken.None);
+
+                    if (selectedReport != null)
+                    {
+                        await ReloadReport();
+                    }
+                }
+                finally
+                {
+                    await dialogService.CloseAsync(progressDialog, CancellationToken.None);
+                }
             }
         }
 
@@ -92,6 +136,29 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
         }
 
+        public async Task OnPageSizeChanged()
+        {
+            if (!allowOnPageSizeChanged)
+            {
+                return;
+            }
+
+            if (selectedReport != null)
+            {
+                var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
+
+                try
+                {
+                    await dialogService.OpenAsync(progressDialog, CancellationToken.None);
+                    await ReloadReport();
+                }
+                finally
+                {
+                    await dialogService.CloseAsync(progressDialog, CancellationToken.None);
+                }
+            }
+        }
+
         public ObservableCollection<PageOrientationModel> SupportedPageOrientations { get; set; }
 
         private PageOrientationModel selectedPageOrientation;
@@ -105,14 +172,35 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
         }
 
-        public void LoadPrinterCapabilities()
+        public async Task OnPageOrientationChanged()
         {
-            LoadPrinterPageSizes();
-            LoadPrinterPageOrientations();
+            if (!allowOnPageOrientationChanged)
+            {
+                return;
+            }
+
+            if (selectedReport != null)
+            {
+                var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
+
+                try
+                {
+                    await dialogService.OpenAsync(progressDialog, CancellationToken.None);
+                    await ReloadReport();
+                }
+                finally
+                {
+                    await dialogService.CloseAsync(progressDialog, CancellationToken.None);
+                }
+            }
         }
 
-        private async Task InitializePrinters(CancellationToken cancellationToken)
+        private async Task Initialize(CancellationToken cancellationToken)
         {
+            allowOnPrinterChanged = false;
+            allowOnPageSizeChanged = false;
+            allowOnPageOrientationChanged = false;
+
             var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: false);
 
             try
@@ -140,12 +228,18 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                 }
 
                 SelectedPrinter = SupportedPrinters.FirstOrDefault();
+                LoadPrinterPageSizes();
+                LoadPrinterPageOrientations();
             }
             catch (OperationCanceledException)
             {
             }
             finally
             {
+                allowOnPrinterChanged = true;
+                allowOnPageSizeChanged = true;
+                allowOnPageOrientationChanged = true;
+
                 await dialogService.CloseAsync(progressDialog, cancellationToken);
             }
         }
@@ -168,7 +262,7 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
         private void LoadPrinterPageOrientations()
         {
-            if(SelectedPrinter != null)
+            if (SelectedPrinter != null)
             {
                 var currentSelectedOrientation = SelectedPageOrientation?.PageOrientation;
 
@@ -180,6 +274,17 @@ namespace Sherman.WpfReporting.Gui.ViewModels
 
                 var defaultOrientation = SupportedPageOrientations.SingleOrDefault(po => po.PageOrientation == PageOrientation.Portrait) ?? SupportedPageOrientations.First();
                 SelectedPageOrientation = SupportedPageOrientations.SingleOrDefault(po => po.PageOrientation == currentSelectedOrientation) ?? defaultOrientation;
+            }
+        }
+
+        private async Task ReloadReport()
+        {
+            if (selectedReport != null &&
+                SelectedPrinter != null &&
+                SelectedPageSize != null &&
+                SelectedPageOrientation != null)
+            {
+                await LoadReport(selectedReport, CancellationToken.None);
             }
         }
 
@@ -200,19 +305,8 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             }
         }
 
-        public async Task LoadReport()
-        {
-            if (selectedReport > 0 && 
-                SelectedPrinter != null && 
-                SelectedPageSize != null &&
-                SelectedPageOrientation != null)
-            {
-                await LoadReport(selectedReport);
-            }
-        }
-
-        private int selectedReport;
-        public async Task LoadReport(int reportNumber)
+        private Func<UIElement> selectedReport;
+        public async Task OnReportSelected(int reportNumber)
         {
             var progressDialog = new ProgressDialogViewModel(isCancellingAllowed: true);
 
@@ -220,9 +314,6 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             {
                 await dialogService.OpenAsync(progressDialog, CancellationToken.None);
                 var dialogCancellationToken = progressDialog.DialogCancellationToken;
-
-                CleanXpsDocumentResources();
-                selectedReport = reportNumber;
 
                 Func<UIElement> reportFactory;
                 switch (reportNumber)
@@ -240,28 +331,8 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                         throw new ArgumentException($"Invalid value for parameter {nameof(reportNumber)}");
                 }
 
-                var printTicket = printing.GetPrintTicket(SelectedPrinter.FullName, SelectedPageSize.PageMediaSize, SelectedPageOrientation.PageOrientation);
-                var printCapabilities = printing.GetPrinterCapabilitiesForPrintTicket(printTicket, SelectedPrinter.FullName);
-
-                if (printCapabilities.OrientedPageMediaWidth.HasValue && printCapabilities.OrientedPageMediaHeight.HasValue)
-                {
-                    var pageSize = new Size(printCapabilities.OrientedPageMediaWidth.Value, printCapabilities.OrientedPageMediaHeight.Value);
-
-                    var desiredMargin = new Thickness(15);
-                    var printerMinMargins = printing.GetMinimumPageMargins(printCapabilities);
-                    AdjustMargins(ref desiredMargin, printerMinMargins);
-
-                    var pages = await paginator.PaginateAsync(reportFactory, pageSize, desiredMargin, dialogCancellationToken);
-                    var fixedDocument = paginator.GetFixedDocumentFromPages(pages, pageSize);
-
-                    // We could simply now assign the fixedDocument to GeneratedDocument
-                    // But then for some reason the DocumentViewer search feature breaks
-                    // The solution is to create an XPS file first and get the FixedDocumentSequence
-                    // from it and then use that in the DocumentViewer
-
-                    xpsDocument = printing.GetXpsDocumentFromFixedDocument(fixedDocument);
-                    GeneratedDocument = xpsDocument.GetFixedDocumentSequence();
-                }
+                await LoadReport(reportFactory, dialogCancellationToken);
+                selectedReport = reportFactory;
             }
             catch (OperationCanceledException)
             {
@@ -269,6 +340,35 @@ namespace Sherman.WpfReporting.Gui.ViewModels
             finally
             {
                 await dialogService.CloseAsync(progressDialog, CancellationToken.None);
+            }
+        }       
+
+        private async Task LoadReport(Func<UIElement> reportFactory, CancellationToken cancellationToken)
+        {
+            var printTicket = printing.GetPrintTicket(SelectedPrinter.FullName, SelectedPageSize.PageMediaSize, SelectedPageOrientation.PageOrientation);
+            var printCapabilities = printing.GetPrinterCapabilitiesForPrintTicket(printTicket, SelectedPrinter.FullName);
+
+            if (printCapabilities.OrientedPageMediaWidth.HasValue && printCapabilities.OrientedPageMediaHeight.HasValue)
+            {
+                var pageSize = new Size(printCapabilities.OrientedPageMediaWidth.Value, printCapabilities.OrientedPageMediaHeight.Value);
+
+                var desiredMargin = new Thickness(15);
+                var printerMinMargins = printing.GetMinimumPageMargins(printCapabilities);
+                AdjustMargins(ref desiredMargin, printerMinMargins);
+
+                var pages = await paginator.PaginateAsync(reportFactory, pageSize, desiredMargin, cancellationToken);
+                var fixedDocument = paginator.GetFixedDocumentFromPages(pages, pageSize);
+
+                // We now could simply assign the fixedDocument to GeneratedDocument
+                // But then for some reason the DocumentViewer search feature breaks
+                // The solution is to create an XPS file first and get the FixedDocumentSequence
+                // from it and then use that in the DocumentViewer
+                
+                // Delete old XPS file first
+                CleanXpsDocumentResources();
+
+                xpsDocument = printing.GetXpsDocumentFromFixedDocument(fixedDocument);
+                GeneratedDocument = xpsDocument.GetFixedDocumentSequence();
             }
         }
 
