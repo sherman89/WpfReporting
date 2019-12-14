@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Windows;
-using Autofac;
+﻿using Autofac;
 using Caliburn.Micro;
 using Sherman.WpfReporting.Gui.DialogManagement;
 using Sherman.WpfReporting.Gui.ViewModels;
 using Sherman.WpfReporting.Lib;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Documents;
+using System.Windows.Markup;
 
 namespace Sherman.WpfReporting.Gui
 {
@@ -21,6 +24,7 @@ namespace Sherman.WpfReporting.Gui
 
         protected override void OnStartup(object sender, StartupEventArgs e)
         {
+            SetControlsDefaultCulture();
             SetupExceptionHandlers();
             DisplayRootViewFor<ShellViewModel>();
         }
@@ -90,6 +94,12 @@ namespace Sherman.WpfReporting.Gui
         protected override void BuildUp(object instance)
         {
             _container.InjectProperties(instance);
+        }
+
+        private void SetControlsDefaultCulture()
+        {
+            FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
+            FrameworkContentElement.LanguageProperty.OverrideMetadata(typeof(TextElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
         }
 
         private static void SetupExceptionHandlers()
