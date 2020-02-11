@@ -1,11 +1,11 @@
 # WPF pagination, printing & other stuff
-The main purpose of this repository was to demonstrate how to create paginated printable documents from plain old XAML controls
+The main purpose of this repository is to demonstrate how to create paginated printable documents from plain old XAML controls
 with the help of attached properties and a paginator class.
 
 I made this repository for myself so that I won't forget how I did it, which is why I also added other features that I think 
 will be useful for my future WPF development work.
 
-Features included:
+Features include:
 * Paginating XAML documents if they contain `ItemsControl` derived controls.
 * Setting page numbers and other properties (e.g. header on first page only) on paginated documents.
 * Getting correct page margins based on printer capabilities and applying them on the generated pages.
@@ -45,4 +45,5 @@ activation is still synchronous, but here I've written it for version 4 which is
 viewmodels when showing (and deactivating when hiding) the dialogs. I haven't tested it too well so don't be surprised to find
 some weird async bugs here and there. Seems to work well so far? :)
 
-Hope this helps you!
+## Building
+The only thing that needs to be done before building, is adding the [Caliburn.Micro myGet feed](https://www.myget.org/feed/caliburn-micro-builds/package/nuget/Caliburn.Micro) to your nuget settings so that nuget restore can install the alpha version of Caliburn.Micro.
