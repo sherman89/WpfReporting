@@ -44,6 +44,3 @@ The `DialogService` handles showing/hiding dialogs in an MVVM way. I first imple
 activation is still synchronous, but here I've written it for version 4 which is async, and I've added code that activates the
 viewmodels when showing (and deactivating when hiding) the dialogs. I haven't tested it too well so don't be surprised to find
 some weird async bugs here and there. Seems to work well so far? :)
-
-## Building
-The only thing that needs to be done before building, is adding the [Caliburn.Micro myGet feed](https://www.myget.org/feed/caliburn-micro-builds/package/nuget/Caliburn.Micro) to your nuget settings so that nuget restore can install the alpha version of Caliburn.Micro.
