@@ -332,6 +332,9 @@ namespace Sherman.WpfReporting.Gui.ViewModels
                     case 3:
                         reportFactory = () => new TestReport3();
                         break;
+                    case 4:
+                        reportFactory = () => new TestReport4();
+                        break;
                     default:
                         throw new ArgumentException($"Invalid value for parameter {nameof(reportNumber)}");
                 }

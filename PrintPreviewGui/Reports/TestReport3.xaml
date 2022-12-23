@@ -18,8 +18,7 @@
         </Grid.ColumnDefinitions>
 
         <TextBlock Grid.Row="0" FontSize="24" TextWrapping="Wrap" Margin="5">
-            This report contains 2 lists, the first grows horizontally (which is why it's OK that its row is set to Auto height)
-            and the second list below it grows vertically.
+            This report contains 2 lists, the first grows horizontally and the second list below it grows vertically.
         </TextBlock>
 
         <ItemsControl Grid.Row="1" x:Name="ItemsControl1" Margin="0,0,0,15"

@@ -1,4 +1,5 @@
 # WPF pagination, printing & other stuff
+
 The main purpose of this repository is to demonstrate how to create paginated printable documents from plain old XAML controls
 with the help of attached properties and a paginator class.
 
@@ -31,16 +32,5 @@ create a new page and continues from there until all the items have been added.
 
 Example reports can be loaded by clicking the buttons on the left. They exist in the **Reports** folder.
 
-## Important!
-Pagination _**requires**_ that the height (or width if paginating horizontally) of the list is known. This means that you should
-place your `ItemsControl` in a panel such as `Grid` with `*` height/width, or a `DockPanel`, or whatever panel that does not 
-grow infinitely like the `StackPanel` does. This is not a limitation of the paginator, if you place a `ScrollViewer` inside 
-such a panel (`Grid` with `Auto` size, or StackPanel), you will notice that the scrollbar keeps growing infinitely as well.
-
-Best practice is to place the list in a star sized row/column in a Grid.
-
 ## Other notes
-The `DialogService` handles showing/hiding dialogs in an MVVM way. I first implemented it using Caliburn.Micro version 3 where
-activation is still synchronous, but here I've written it for version 4 which is async, and I've added code that activates the
-viewmodels when showing (and deactivating when hiding) the dialogs. I haven't tested it too well so don't be surprised to find
-some weird async bugs here and there. Seems to work well so far? :)
+Don't pay too much attention to these MVVM practices, some of them I don't like anymore but I don't have time to refactor them.
