@@ -1,3 +1,6 @@
+### **WARNING: THIS IS NOT PRODUCTION READY CODE, AND I'M NOT A WPF EXPERT. For best results with the paginator, do _NOT_ use StackPanel. Grid is your friend. Paginator does not accept any wacky XAML, it's meant to work with simple reports and that's all, so just use a simple Grid, preferably with star sizing.**
+
+&nbsp;<br>
 # WPF pagination, printing & other stuff
 
 The main purpose of this repository is to demonstrate how to create paginated printable documents from plain old XAML controls
