@@ -133,7 +133,7 @@ namespace Sherman.WpfReporting.Lib
 
             foreach (var itemsControl in itemsControls)
             {
-                itemsControl.UpdateLayout();
+                // itemsControl.UpdateLayout();
 
                 if (string.IsNullOrWhiteSpace(itemsControl.Name))
                 {
@@ -181,13 +181,25 @@ namespace Sherman.WpfReporting.Lib
         private static bool Paginate(IReadOnlyCollection<DependencyObject> pageLogicalChildren, IDictionary<string, ItemsControlData> paginationTracker)
         {
             var itemsControlsToPaginate = pageLogicalChildren.OfType<ItemsControl>()
-                .Where(i => i.GetValue(Document.PaginateProperty) is bool paginate && paginate).ToList();
+                .Where(i => i.GetValue(Document.PaginateProperty) is bool paginate && paginate)
+                .ToList();
 
-            // Paginate lists
+            // Clear all items controls to prepare for re-populating them, but paginated.
+            // UpdateLayout is necessary to reset the actual heights and widths of all the
+            // items controls on the page. Necessary to determine if pagination is needed when
+            // the items control is inside an infinitely growing container (like Auto grid)
             foreach (var itemsControl in itemsControlsToPaginate)
             {
                 itemsControl.ItemsSource = null;
                 itemsControl.Items.Clear();
+                itemsControl.Visibility = Visibility.Collapsed;
+                itemsControl.UpdateLayout();
+            }
+
+            // Paginate lists
+            foreach (var itemsControl in itemsControlsToPaginate)
+            {
+                itemsControl.Visibility = Visibility.Visible;
 
                 if (paginationTracker.ContainsKey(itemsControl.Name))
                 {
@@ -206,11 +218,17 @@ namespace Sherman.WpfReporting.Lib
                         paginationTracker.Remove(itemsControl.Name);
                     }
                 }
+
+                if (itemsControl.Items.Count == 0)
+                {
+                    itemsControl.Visibility = Visibility.Collapsed;
+                }
             }
 
             // Check if all of the visible lists are empty, if so, pagination failed.
             if (itemsControlsToPaginate.Any() && itemsControlsToPaginate.All(ic => !ic.HasItems))
             {
+                // return false;
                 throw new InvalidOperationException("Tried to populate ItemsControls, but not a single item had enough space. " +
                                                     "This can be caused by bad XAML or a given page size that is too small to fit the content.");
             }
@@ -229,17 +247,39 @@ namespace Sherman.WpfReporting.Lib
                 return false;
             }
 
+            var itemsControlParent = LogicalTreeHelper.GetParent(itemsControl) as FrameworkElement;
+            itemsControlParent?.UpdateLayout();
+
+            if (itemsControl.Items.Count > 0)
+            {
+                // If ItemsControl grows infinitely (like in an Auto sized Grid) then the parent will grow as well
+                // and we need real parent size to determine when to paginate in cases where the size is unknown.
+                // If the height/width are known, like * size, then this is unnecessary.
+                throw new InvalidOperationException("ItemsControl must be empty to get its parents real size.");
+            }
+
+            var parentInitialActualHeight = itemsControlParent?.ActualHeight;
+            var parentInitialActualWidth = itemsControlParent?.ActualWidth;
+
             for (var i = startIndex; i < items.Length; i++)
             {
                 var item = items.GetValue(i);
                 itemsControl.Items.Add(item);
                 itemsControl.UpdateLayout();
 
+                // Test 1: Check if ItemsControl item is fully visible in its container.
+                // This test covers the cases where the ItemsControl height or width are known
                 var itemContainer = (FrameworkElement)itemsControl.ItemContainerGenerator.ContainerFromItem(item);
                 var itemsPresenter = FindVisualParent<ItemsPresenter>(itemContainer).Single();
                 var isVisible = IsElementFullyVisibleInContainer(itemsPresenter, itemContainer);
 
-                if (!isVisible)
+                // Test 2: Check if ItemsControl parent has grown beyond its original size
+                // This test covers the cases where the ItemsControl height or width are unknown
+                var parentGrew = itemsControlParent != null &&
+                                 (itemsControlParent.ActualHeight > parentInitialActualHeight ||
+                                  itemsControlParent.ActualWidth > parentInitialActualWidth);
+
+                if (!isVisible || parentGrew)
                 {
                     itemsControl.Items.Remove(item);
                     currentItemIndex = i;

@@ -33,9 +33,10 @@
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0">
             <TextBlock Text="Test reports:" FontWeight="Bold" Margin="0,0,0,10" />
-            <Button Content="Report 1" cm:Message.Attach="OnReportSelected(1)" Margin="0,0,0,10" />
-            <Button Content="Report 2" cm:Message.Attach="OnReportSelected(2)" Margin="0,0,0,10" />
-            <Button Content="Report 3" cm:Message.Attach="OnReportSelected(3)" Margin="0,0,0,10" />
+            <Button Content="Simple Report" cm:Message.Attach="OnReportSelected(1)" Margin="0,0,0,10" />
+            <Button Content="ListView" cm:Message.Attach="OnReportSelected(2)" Margin="0,0,0,10" />
+            <Button Content="Horizontal" cm:Message.Attach="OnReportSelected(3)" Margin="0,0,0,10" />
+            <Button Content="Auto Size" cm:Message.Attach="OnReportSelected(4)" Margin="0,0,0,10" />
         </StackPanel>
 
         <DocumentViewer Grid.Column="2" Document="{Binding GeneratedDocument}" />
