@@ -219,9 +219,9 @@ namespace Sherman.WpfReporting.Lib
                     }
                 }
 
-                if (itemsControl.Items.Count > 0)
+                if (itemsControl.Items.Count == 0)
                 {
-                    itemsControl.Visibility = Visibility.Visible;
+                    itemsControl.Visibility = Visibility.Collapsed;
                 }
             }
 
